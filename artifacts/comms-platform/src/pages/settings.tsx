@@ -5,8 +5,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Settings as SettingsIcon, CheckCircle2, XCircle, Loader2, Phone, Key, MessageCircle } from "lucide-react";
+import { Settings as SettingsIcon, CheckCircle2, XCircle, Loader2, Phone, Key, MessageCircle, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const DOMAIN = window.location.origin;
+
+const WEBHOOKS = [
+  { label: "Voice Incoming (POST)", path: "/api/calls/webhook", desc: "Set in Twilio → Phone Numbers → Voice" },
+  { label: "Voice Status Callback (POST)", path: "/api/calls/status", desc: "Set in Twilio → Phone Numbers → Call Status" },
+  { label: "SMS Incoming (POST)", path: "/api/sms/webhook", desc: "Set in Twilio → Phone Numbers → Messaging" },
+  { label: "SMS Status (POST)", path: "/api/sms/status", desc: "Set in Twilio → Messaging → Status Callback" },
+  { label: "WhatsApp Incoming (POST)", path: "/api/whatsapp/webhook", desc: "Set in Twilio → Messaging → WhatsApp Sandbox" },
+];
+
+function CopyableUrl({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <div className="flex items-center gap-2 mt-1 p-2 bg-background/70 rounded-sm border border-border/30 group">
+      <code className="text-[11px] text-primary font-mono flex-1 break-all">{url}</code>
+      <button onClick={copy} className="shrink-0 text-muted-foreground hover:text-primary transition-colors">
+        {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
+    </div>
+  );
+}
 
 export default function Settings() {
   const { data: settings, refetch } = useGetSettings();
@@ -25,7 +52,7 @@ export default function Settings() {
       setAccountSid(settings.twilioAccountSid ?? "");
       setPhoneNumber(settings.twilioPhoneNumber ?? "");
       setWhatsappNumber(settings.twilioWhatsappNumber ?? "");
-      setWebhookBaseUrl(settings.webhookBaseUrl ?? "");
+      setWebhookBaseUrl(settings.webhookBaseUrl ?? DOMAIN);
     }
   }, [settings]);
 
@@ -54,6 +81,8 @@ export default function Settings() {
       onError: () => setTestResult({ success: false, message: "Connection failed. Check your credentials." }),
     });
   };
+
+  const base = webhookBaseUrl || DOMAIN;
 
   return (
     <div className="p-6 space-y-6">
@@ -135,35 +164,11 @@ export default function Settings() {
                 <Input
                   value={webhookBaseUrl}
                   onChange={(e) => setWebhookBaseUrl(e.target.value)}
-                  placeholder="https://your-domain.com"
+                  placeholder={DOMAIN}
                   className="bg-background/50 border-input font-mono h-9 rounded-sm text-xs"
                 />
+                <p className="text-[10px] text-muted-foreground">Auto-detected: {DOMAIN}</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <SettingsIcon className="w-4 h-4" />
-              Webhook URLs
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-xs text-muted-foreground mb-3">Configure these in your Twilio console to receive inbound events:</p>
-            <div className="space-y-2">
-              {[
-                { label: "Voice Webhook (POST)", path: "/api/calls/webhook" },
-                { label: "SMS Webhook (POST)", path: "/api/sms/webhook" },
-                { label: "WhatsApp Webhook (POST)", path: "/api/whatsapp/webhook" },
-                { label: "Call Status Callback (POST)", path: "/api/calls/status" },
-              ].map(({ label, path }) => (
-                <div key={path} className="flex items-center justify-between p-2.5 bg-background/50 rounded-sm border border-border/30">
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</span>
-                  <code className="text-xs text-primary font-mono">{path}</code>
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>
@@ -174,6 +179,43 @@ export default function Settings() {
           </Button>
         </div>
       </form>
+
+      <Card className="bg-card border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <SettingsIcon className="w-4 h-4" />
+            Webhook URLs — Configure in Twilio Console
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Copy these URLs and paste them in your{" "}
+            <a href="https://console.twilio.com/us1/develop/phone-numbers/manage/incoming" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+              Twilio Phone Number settings
+            </a>
+            {" "}to receive incoming calls, SMS, and WhatsApp messages.
+          </p>
+          <div className="space-y-4">
+            {WEBHOOKS.map(({ label, path, desc }) => (
+              <div key={path}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{label}</span>
+                  <span className="text-[10px] text-muted-foreground/60">{desc}</span>
+                </div>
+                <CopyableUrl url={`${base}${path}`} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 p-3 bg-cyan-400/5 border border-cyan-400/20 rounded-sm text-xs text-cyan-300/80 space-y-1">
+            <p className="font-semibold uppercase tracking-wider text-cyan-400">Setup Guide</p>
+            <p>1. Go to <strong>console.twilio.com</strong> → Phone Numbers → Manage → Active Numbers</p>
+            <p>2. Click your number <strong>{phoneNumber || "+12183925543"}</strong></p>
+            <p>3. Under <strong>Voice &amp; Fax</strong> → "A call comes in" → set to <strong>Webhook</strong> → paste Voice URL above</p>
+            <p>4. Under <strong>Messaging</strong> → "A message comes in" → paste SMS URL above</p>
+            <p>5. Click <strong>Save</strong></p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

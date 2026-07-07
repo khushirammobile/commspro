@@ -39,6 +39,36 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.post("/webhook", async (req, res) => {
+  const { MessageSid, From, To, Body, MessageStatus } = req.body;
+  try {
+    await db.insert(smsMessagesTable).values({
+      twilioSid: MessageSid ?? null,
+      direction: "inbound",
+      from: From ?? "",
+      to: To ?? TWILIO_PHONE,
+      body: Body ?? "",
+      status: MessageStatus ?? "received",
+    });
+    await db.insert(activityItemsTable).values({
+      type: "sms",
+      description: `Incoming SMS from ${From ?? "unknown"}`,
+      meta: (Body ?? "").slice(0, 50),
+    });
+  } catch { /* best effort */ }
+  res.type("text/xml").send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+});
+
+router.post("/status", async (req, res) => {
+  const { MessageSid, MessageStatus } = req.body;
+  if (MessageSid) {
+    await db.update(smsMessagesTable)
+      .set({ status: MessageStatus })
+      .where(eq(smsMessagesTable.twilioSid, MessageSid));
+  }
+  res.sendStatus(200);
+});
+
 router.get("/:id", async (req, res) => {
   const [msg] = await db.select().from(smsMessagesTable).where(eq(smsMessagesTable.id, Number(req.params.id))).limit(1);
   if (!msg) { res.status(404).json({ error: "Not found" }); return; }

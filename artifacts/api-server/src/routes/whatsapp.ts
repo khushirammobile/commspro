@@ -82,4 +82,27 @@ router.post("/send", async (req, res) => {
   }
 });
 
+router.post("/webhook", async (req, res) => {
+  const { MessageSid, From, To, Body, MediaUrl0 } = req.body;
+  try {
+    const waFrom = From ?? "";
+    const waTo = To ?? TWILIO_WHATSAPP;
+    await db.insert(whatsappMessagesTable).values({
+      twilioSid: MessageSid ?? null,
+      direction: "inbound",
+      from: waFrom,
+      to: waTo,
+      body: Body ?? "",
+      status: "received",
+      mediaUrl: MediaUrl0 ?? null,
+    });
+    await db.insert(activityItemsTable).values({
+      type: "whatsapp",
+      description: `Incoming WhatsApp from ${waFrom.replace("whatsapp:", "")}`,
+      meta: (Body ?? "").slice(0, 50),
+    });
+  } catch { /* best effort */ }
+  res.type("text/xml").send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+});
+
 export default router;
