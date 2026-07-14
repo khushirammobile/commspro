@@ -1,0 +1,17 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = [
+  "npm install -g pnpm@10.26.1",
+  "pnpm install --no-frozen-lockfile"
+]
+
+[phases.build]
+cmds = [
+  "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/comms-platform run build",
+  "pnpm --filter @workspace/api-server run build"
+]
+
+[start]
+cmd = "node artifacts/api-server/dist/index.mjs"
