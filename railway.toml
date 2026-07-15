@@ -1,0 +1,5 @@
+[build]
+buildCommand = "npm install -g pnpm@10.26.1 && pnpm install --no-frozen-lockfile && PORT=3000 BASE_PATH=/ pnpm --filter @workspace/comms-platform run build && pnpm --filter @workspace/api-server run build"
+
+[deploy]
+startCommand = "node artifacts/api-server/dist/index.mjs"
